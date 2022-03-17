@@ -7,17 +7,31 @@
 #include <mach/task.h>
 
 int main(int argc, char* argv[]) {
+	if(argc != 2) {
+		printf("Usage: inspect <pid>\n");
+		return 1;
+	}
+	int res;
 	int pid = atoi(argv[1]);
-	printf("Attempting to inspect pid %d:\n", pid);
+	// open mach port to pid
+	task_t port;
+	res = task_for_pid(mach_task_self(), pid, &port);
+	if(res != KERN_SUCCESS) {
+		char* msg = mach_error_string(res);
+		printf("ERROR while attempting to open mach port for pid %d: %d %s\n", pid, res, msg);
+		return(1);
+	}
+
+	// get threads for pid
 	thread_info_data_t thinfo;
 	thread_act_array_t threads;
 	thread_basic_info_t basic_info_t;
 	mach_msg_type_number_t count = 0;
 	mach_msg_type_number_t thread_info_count = THREAD_INFO_MAX;
-	int res = task_threads(pid, &threads, &count);
+	res = task_threads(port, &threads, &count);
 	if(res != KERN_SUCCESS) {
 		char* msg = mach_error_string(res);
-		printf("Error while attempting to inspect: %d %s\n", res, msg);
+		printf("ERROR while attempting to inspect PID %d via port %d: %d %s\n", pid, port, res, msg);
 		return(1);
 	}
 	printf("Successfully retrieved info for %d threads in pid:\n", count);
